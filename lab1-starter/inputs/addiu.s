@@ -6,3 +6,4 @@ __start:	addiu $v0, $zero, 10
 		addiu $t3, $t2, 34
 		addiu $t3, $t3, 45
 		syscall
+
