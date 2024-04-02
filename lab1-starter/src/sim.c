@@ -87,7 +87,7 @@ void process_instruction() {
 
     // handle the type and execute the instruction
     // check the opcode
-    uint32_t opcode = instruction >> 26;
+    uint8_t opcode = (instruction >> 26);
 
     // if the register $v0  has value 0x0A (decimal 10) when SYSCALL is executed, 
     // then the go command should stop its simulation loop and return to the simulator shell’s prompt
@@ -95,48 +95,26 @@ void process_instruction() {
     // after execute the instruction we move the pc to the next instruction
     switch (opcode) {
         case 0x00:
-            printf("R-type\n");
             R_type(instruction);
             break;
         case 0x02:
         case 0x03:
-            printf("J-type\n");
             J_type(instruction);
             break;
         default:
-            printf("I-type\n");
             I_type(instruction);
             break;
     }
-
-    // move the pc to the next instruction
-    NEXT_STATE.PC = CURRENT_STATE.PC + 4;
 }
 
 
 void check_syscall() {
-    uint32_t syscall_number = CURRENT_STATE.REGS[2];
-    printf("Syscall invoked with code: %u\n", syscall_number);
-    
-    switch(syscall_number) {
-        case 0xA: // exit syscall
-            printf("Exit syscall. Halting simulator.\n");
-            RUN_BIT = 0;
-            break;
-        // Example: Add more cases here for other syscalls
-        // case 0x5: // read integer syscall
-        //     // Implementation to read an integer from input
-        //     break;
-        default:
-            printf("Unknown syscall: %u\n or nothing", syscall_number);
-            // Decide on behavior: halt, ignore, or default action
-            break;
-    }
-}
+    if (CURRENT_STATE.REGS[2] == 0xA) {
+        RUN_BIT = 0;
 
-int addition_overflows(int32_t a, int32_t b) {
-    int64_t result = (int64_t)a + (int64_t)b;
-    return result > INT_MAX || result < INT_MIN;
+    } else {
+        NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+    }
 }
 
 void R_type(uint32_t instruction) {
@@ -145,71 +123,89 @@ void R_type(uint32_t instruction) {
     uint32_t rt = (instruction >> 16) & 0x1F;
     uint32_t rd = (instruction >> 11) & 0x1F;
     uint32_t shamt = (instruction >> 6) & 0x1F;
+    int32_t offset = instruction & 0xFFFF;
+    int64_t result = (int64_t) CURRENT_STATE.REGS[rs] * (int64_t) CURRENT_STATE.REGS[rt];
 
     switch (instr) {
         case 0x20:
             // ADD
             NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] + CURRENT_STATE.REGS[rt];
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x21:
             // ADDU
             NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] + CURRENT_STATE.REGS[rt];
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x22:
             // SUB
             NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] - CURRENT_STATE.REGS[rt];
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x23:
             // SUBU
             NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] - CURRENT_STATE.REGS[rt];
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x24:
             // AND
             NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] & CURRENT_STATE.REGS[rt];
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x25:
             // OR
             NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] | CURRENT_STATE.REGS[rt];
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x26:
             // XOR
             NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rs] ^ CURRENT_STATE.REGS[rt];
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x27:
             // NOR
             NEXT_STATE.REGS[rd] = ~(CURRENT_STATE.REGS[rs] | CURRENT_STATE.REGS[rt]);
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x2A:
             // SLT
             NEXT_STATE.REGS[rd] = (CURRENT_STATE.REGS[rs] < CURRENT_STATE.REGS[rt]) ? 1 : 0;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x2B:
             // SLTU
             NEXT_STATE.REGS[rd] = (CURRENT_STATE.REGS[rs] < CURRENT_STATE.REGS[rt]) ? 1 : 0;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x00:
             // SLL
             NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rt] << shamt;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x02:
             // SRL
             NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rt] >> shamt;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x03:
             // SRA
             NEXT_STATE.REGS[rd] = (int32_t) CURRENT_STATE.REGS[rt] >> shamt;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x04:
             // SLLV
-            NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rt] << CURRENT_STATE.REGS[rs];
+            NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rt] << (CURRENT_STATE.REGS[rs] & 0x1F);
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x06:
             // SRLV
-            NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rt] >> CURRENT_STATE.REGS[rs];
+            NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rt] >> (CURRENT_STATE.REGS[rs] & 0x1F);
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x07:
             // SRAV
-            NEXT_STATE.REGS[rd] = (int32_t) CURRENT_STATE.REGS[rt] >> CURRENT_STATE.REGS[rs];
+            NEXT_STATE.REGS[rd] = (int32_t) CURRENT_STATE.REGS[rt] >> (CURRENT_STATE.REGS[rs] & 0x1F);
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x08:
             // JR
@@ -218,49 +214,51 @@ void R_type(uint32_t instruction) {
         case 0x09:
             // JALR
             NEXT_STATE.REGS[rd] = CURRENT_STATE.PC + 4;
-            NEXT_STATE.PC = CURRENT_STATE.REGS[rs];
+            NEXT_STATE.PC = CURRENT_STATE.REGS[rs] + offset;
             break;
         case 0x18:
             // MULT
-            {
-                int64_t result = (int64_t) CURRENT_STATE.REGS[rs] * (int64_t) CURRENT_STATE.REGS[rt];
-                NEXT_STATE.HI = (result >> 32) & 0xFFFFFFFF;
-                NEXT_STATE.LO = result & 0xFFFFFFFF;
-            }
+            NEXT_STATE.HI = (result >> 32) & 0xFFFFFFFF;
+            NEXT_STATE.LO = result & 0xFFFFFFFF;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x19:
             // MULTU
-            {
-                uint64_t result = (uint64_t) CURRENT_STATE.REGS[rs] * (uint64_t) CURRENT_STATE.REGS[rt];
-                NEXT_STATE.HI = (result >> 32) & 0xFFFFFFFF;
-                NEXT_STATE.LO = result & 0xFFFFFFFF;
-            }
+            NEXT_STATE.HI = (result >> 32) & 0xFFFFFFFF;
+            NEXT_STATE.LO = result & 0xFFFFFFFF;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+            break;
+        case 0x10:
+            // MFHI
+            NEXT_STATE.REGS[rd] = CURRENT_STATE.HI;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+            break;
+        case 0x12:
+            // MFLO
+            NEXT_STATE.REGS[rd] = CURRENT_STATE.LO;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+            break;
+        case 0x11:
+            // MTHI
+            NEXT_STATE.HI = CURRENT_STATE.REGS[rs];
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+            break;
+        case 0x13:
+            // MTLO
+            NEXT_STATE.LO = CURRENT_STATE.REGS[rs];
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x1A:
             // DIV
             NEXT_STATE.LO = (int32_t) CURRENT_STATE.REGS[rs] / (int32_t) CURRENT_STATE.REGS[rt];
             NEXT_STATE.HI = (int32_t) CURRENT_STATE.REGS[rs] % (int32_t) CURRENT_STATE.REGS[rt];
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x1B:
             // DIVU
             NEXT_STATE.LO = CURRENT_STATE.REGS[rs] / CURRENT_STATE.REGS[rt];
             NEXT_STATE.HI = CURRENT_STATE.REGS[rs] % CURRENT_STATE.REGS[rt];
-            break;
-        case 0x10:
-            // MFHI
-            NEXT_STATE.REGS[rd] = CURRENT_STATE.HI;
-            break;
-        case 0x12:
-            // MFLO
-            NEXT_STATE.REGS[rd] = CURRENT_STATE.LO;
-            break;
-        case 0x11:
-            // MTHI
-            NEXT_STATE.HI = CURRENT_STATE.REGS[rs];
-            break;
-        case 0x13:
-            // MTLO
-            NEXT_STATE.LO = CURRENT_STATE.REGS[rs];
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x0C:
             // SYSCALL
@@ -276,50 +274,134 @@ void I_type(uint32_t instruction) {
     uint32_t opcode = instruction >> 26;
     uint32_t rs = (instruction >> 21) & 0x1F; // Source register
     uint32_t rt = (instruction >> 16) & 0x1F; // Target register
-    int32_t signed_imm = (int32_t)(int16_t)(instruction & 0xFFFF);
-    printf("rs: %d rt: %d signed_imm: %d\n", rs, rt, signed_imm);
+    int32_t imm_int = ((int32_t)(instruction << 16)) >> 16;
+    int32_t imm_uint = ((uint32_t)(instruction << 16)) >> 16;
+    int32_t imm_F = (int32_t)imm_int;
+
     switch (opcode) {
         case 0x08: // ADDI
-            NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] + signed_imm;
+            NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] + imm_int;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x09: // ADDIU
-            printf("next stage rt: %d curr rs: %d signed imm: %d\n", NEXT_STATE.REGS[rt], CURRENT_STATE.REGS[rs], signed_imm);
-            NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] + signed_imm;
+            NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] + imm_uint;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x0A: // SLTI
-            NEXT_STATE.REGS[rt] = ((int32_t)CURRENT_STATE.REGS[rs] < signed_imm) ? 1 : 0;
+            NEXT_STATE.REGS[rt] = (CURRENT_STATE.REGS[rs] < imm_int) ? 1 : 0;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x0B: // SLTIU
-            NEXT_STATE.REGS[rt] = (CURRENT_STATE.REGS[rs] < (uint32_t)signed_imm) ? 1 : 0;
+            NEXT_STATE.REGS[rt] = (CURRENT_STATE.REGS[rs] < imm_uint) ? 1 : 0;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x0C: // ANDI
-            NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] & signed_imm; // ANDI uses zero-extension
+            NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] & imm_F; // ANDI uses zero-extension
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x0D: // ORI
-            NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] | signed_imm; // ORI uses zero-extension
+            NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] | imm_F; // ORI uses zero-extension
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x0E: // XORI
-            NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] ^ signed_imm; // XORI uses zero-extension
+            NEXT_STATE.REGS[rt] = CURRENT_STATE.REGS[rs] ^ imm_F; // XORI uses zero-extension
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         case 0x0F: // LUI
-            NEXT_STATE.REGS[rt] = signed_imm << 16;
+            NEXT_STATE.REGS[rt] = imm_F << 16;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+            break;
+        case 0x20: // LB
+            int32_t offset = ((int32_t)(instruction << 16)) >> 16;
+            int32_t v_addr = CURRENT_STATE.REGS[rs] + offset;
+            int8_t byte = mem_read_32(v_addr);
+            NEXT_STATE.REGS[rt] = (int32_t)byte;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+            break;
+        case 0x21: // LH
+            offset = ((int32_t)(instruction << 16)) >> 16;
+            v_addr = CURRENT_STATE.REGS[rs] + offset;
+            int16_t halfword = (int16_t) mem_read_32(v_addr);
+            NEXT_STATE.REGS[rt] = (int32_t)halfword;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+            break;
+        case 0x23: // LW
+            offset = ((int32_t)(instruction << 16)) >> 16;
+            v_addr = CURRENT_STATE.REGS[rs] + offset;
+            int32_t word = mem_read_32(v_addr);
+            NEXT_STATE.REGS[rt] = word;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+            break;
+        case 0x24: // LBU
+            offset = ((int32_t)(instruction << 16)) >> 16;
+            v_addr = CURRENT_STATE.REGS[rs] + offset;
+            uint8_t ubyte = mem_read_32(v_addr);
+            NEXT_STATE.REGS[rt] = (int32_t)ubyte;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+            break;
+        case 0x25: // LHU
+            offset = ((int32_t)(instruction << 16)) >> 16;
+            v_addr = CURRENT_STATE.REGS[rs] + offset;
+            uint16_t uhalfword = (uint16_t) mem_read_32(v_addr);
+            NEXT_STATE.REGS[rt] = (int32_t)uhalfword;
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+            break;
+        case 0x28: // SB
+            offset = ((int32_t)(instruction << 16)) >> 16;
+            v_addr = CURRENT_STATE.REGS[rs] + offset;
+            mem_write_32(v_addr, CURRENT_STATE.REGS[rt] & 0xFF);
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+            break;
+        case 0x29: // SH
+            offset = ((int32_t)(instruction << 16)) >> 16;
+            v_addr = CURRENT_STATE.REGS[rs] + offset;
+            mem_write_32(v_addr, CURRENT_STATE.REGS[rt] & 0xFFFF);
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
+            break;
+        case 0x2B: // SW
+            offset = ((int32_t)(instruction << 16)) >> 16;
+            v_addr = CURRENT_STATE.REGS[rs] + offset;
+            mem_write_32(v_addr, CURRENT_STATE.REGS[rt]);
+            NEXT_STATE.PC = CURRENT_STATE.PC + 4;
             break;
         // Memory access and branch instructions omitted for brevity...
         case 0x04: // BEQ
+             int32_t target = offset << 2;
             if (CURRENT_STATE.REGS[rs] == CURRENT_STATE.REGS[rt]) {
-                NEXT_STATE.PC = CURRENT_STATE.PC + 4 + (signed_imm << 2);
+                NEXT_STATE.PC = CURRENT_STATE.PC + imm_int << 2;
             } else {
                 NEXT_STATE.PC = CURRENT_STATE.PC + 4; // Only update if not branching
             }
             return; // Prevent further PC modification at the end of the function
         case 0x05: // BNE
             if (CURRENT_STATE.REGS[rs] != CURRENT_STATE.REGS[rt]) {
-                NEXT_STATE.PC = CURRENT_STATE.PC + 4 + (signed_imm << 2);
+                NEXT_STATE.PC = CURRENT_STATE.PC + 4 + (imm_int << 2);
             } else {
                 NEXT_STATE.PC = CURRENT_STATE.PC + 4; // Only update if not branching
             }
             return; // Prevent further PC modification at the end of the function
         // Add additional cases for other I-type instructions...
+        case 0x06: // BLEZ
+            NEXT_STATE.PC = (CURRENT_STATE.REGS[rs] <= 0) ? CURRENT_STATE.PC + 4 + (imm_int << 2) : CURRENT_STATE.PC + 4;
+        case 0x07: // BGTZ
+            NEXT_STATE.PC = (CURRENT_STATE.REGS[rs] > 0) ? CURRENT_STATE.PC + 4 + (imm_int << 2) : CURRENT_STATE.PC + 4;
+            return;
+        case 0x01: // BGEZ, BLTZ
+            if (rt == 0x01) { // BGEZ
+                NEXT_STATE.PC = (int32_t)CURRENT_STATE.REGS[rs] >= 0 ? CURRENT_STATE.PC + 4 + (imm_int << 2) : CURRENT_STATE.PC + 4;
+            } else { // BLTZ
+                NEXT_STATE.PC = (int32_t)CURRENT_STATE.REGS[rs] < 0 ? CURRENT_STATE.PC + 4 + (imm_int << 2) : CURRENT_STATE.PC + 4;
+            }
+            return;
+        case 0x11: // BGEZAL, BLTZAL
+            if (rt == 0x01) { // BGEZAL
+                NEXT_STATE.REGS[31] = CURRENT_STATE.PC + 4;
+                NEXT_STATE.PC = (int32_t)CURRENT_STATE.REGS[rs] >= 0 ? CURRENT_STATE.PC + 4 + (imm_int << 2) : CURRENT_STATE.PC + 4;
+            } else { // BLTZAL
+                NEXT_STATE.REGS[31] = CURRENT_STATE.PC + 4;
+                NEXT_STATE.PC = (int32_t)CURRENT_STATE.REGS[rs] < 0 ? CURRENT_STATE.PC + 4 + (imm_int << 2) : CURRENT_STATE.PC + 4;
+            }
+            return;
         default:
             printf("Unknown I-type instruction: 0x%08x\n", instruction);
             break;
@@ -327,15 +409,15 @@ void I_type(uint32_t instruction) {
 }
 
 void J_type(uint32_t instruction) {
-    uint32_t opcode = instruction >> 26;
+    uint32_t opcode = (instruction >> 26) & 0x3F;
     uint32_t target = instruction & 0x3FFFFFF;
 
     switch (opcode) {
-        case 0x02:
+        case 0x10:
             // J
             NEXT_STATE.PC = (CURRENT_STATE.PC & 0xF0000000) | (target << 2);
             break;
-        case 0x03:
+        case 0x11:
             // JAL
             NEXT_STATE.REGS[31] = CURRENT_STATE.PC + 4;
             NEXT_STATE.PC = (CURRENT_STATE.PC & 0xF0000000) | (target << 2);
@@ -345,5 +427,3 @@ void J_type(uint32_t instruction) {
             break;
     }
 }
-
-
